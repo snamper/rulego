@@ -27,6 +27,82 @@ import (
 	"time"
 )
 
+func TestDbClientNode(t *testing.T) {
+	var targetNodeType = "dbClient"
+
+	t.Run("NewNode", func(t *testing.T) {
+		test.NodeNew(t, targetNodeType, &DbClientNode{}, types.Configuration{
+			"sql":        "select * from test",
+			"driverName": "mysql",
+			"dsn":        "root:root@tcp(127.0.0.1:3306)/test",
+		}, Registry)
+	})
+
+	//t.Run("InitNode", func(t *testing.T) {
+	//	test.NodeInit(t, targetNodeType, types.Configuration{
+	//		"sql":        "select * from test2",
+	//		"driverName": "postgres",
+	//		"dsn":        "root:root@tcp(127.0.0.1:3306)/test2",
+	//	}, types.Configuration{
+	//		"sql":        "select * from test2",
+	//		"driverName": "postgres",
+	//		"dsn":        "root:root@tcp(127.0.0.1:3306)/test2",
+	//	}, Registry)
+	//})
+	//
+	//t.Run("DefaultConfig", func(t *testing.T) {
+	//	test.NodeInit(t, targetNodeType, types.Configuration{
+	//		"sql":        "select * from test",
+	//		"driverName": "mysql",
+	//		"dsn":        "root:root@tcp(127.0.0.1:3306)/test",
+	//	}, types.Configuration{
+	//		"sql":        "select * from test",
+	//		"driverName": "mysql",
+	//		"dsn":        "root:root@tcp(127.0.0.1:3306)/test",
+	//	}, Registry)
+	//})
+
+	t.Run("OnMsg", func(t *testing.T) {
+
+		node, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
+			"sql":        "select * from test",
+			"driverName": "mysql",
+			"dsn":        "root:root@tcp(127.0.0.1:3308)/test",
+		}, Registry)
+		assert.NotNil(t, err)
+
+		metaData := types.BuildMetadata(make(map[string]string))
+		metaData.PutValue("productType", "test")
+		msgList := []test.Msg{
+			{
+				MetaData:   metaData,
+				MsgType:    "ACTIVITY_EVENT1",
+				Data:       "AA",
+				AfterSleep: time.Millisecond * 200,
+			},
+			{
+				MetaData:   metaData,
+				MsgType:    "ACTIVITY_EVENT2",
+				Data:       "{\"temperature\":60}",
+				AfterSleep: time.Millisecond * 200,
+			},
+		}
+
+		var nodeList = []test.NodeAndCallback{
+			{
+				Node:    node,
+				MsgList: msgList,
+				Callback: func(msg types.RuleMsg, relationType string, err error) {
+					assert.Equal(t, types.Failure, relationType)
+				},
+			},
+		}
+		for _, item := range nodeList {
+			test.NodeOnMsgWithChildren(t, item.Node, item.MsgList, item.ChildrenNodes, item.Callback)
+		}
+	})
+}
+
 // 测试mysql增删修改查
 func TestMysqlDbClientNodeOnMsg(t *testing.T) {
 	testDbClientNodeOnMsg(t, "mysql", "root:root@tcp(127.0.0.1:3306)/test")
@@ -36,6 +112,7 @@ func TestMysqlDbClientNodeOnMsg(t *testing.T) {
 func TestPgDbClientNodeOnMsg(t *testing.T) {
 	testDbClientNodeOnMsg(t, "postgres", "postgres://postgres:postgres@127.0.0.1:5432/test?sslmode=disable")
 }
+
 func testDbClientNodeOnMsg(t *testing.T, driverName, dsn string) {
 
 	metaData := types.NewMetadata()
