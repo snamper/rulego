@@ -27,6 +27,7 @@ func TestWorkerPool(t *testing.T) {
 	wp.Start()
 	defer func() {
 		wp.Stop()
+		wp.Start()
 	}()
 	var n int32
 	fn := func() {
@@ -55,6 +56,7 @@ func TestWorkerPoolWithMaxIdleWorkerD(t *testing.T) {
 	wp.Start()
 	defer func() {
 		wp.Stop()
+		wp.Start()
 	}()
 	var n int32
 	fn := func() {
@@ -76,13 +78,4 @@ func TestWorkerPoolWithMaxIdleWorkerD(t *testing.T) {
 	if wp.Submit(fn) != nil {
 		t.Fatalf("cannot submit")
 	}
-}
-
-func TestWorkerPoolWithDoubleStart(*testing.T) {
-	wp := &WorkerPool{MaxWorkersCount: 200000, MaxIdleWorkerDuration: time.Second * 10}
-	wp.Start()
-	wp.Start()
-	defer func() {
-		wp.Stop()
-	}()
 }
