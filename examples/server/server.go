@@ -165,6 +165,8 @@ func initLogger() *log.Logger {
 func initRuleGo(logger *log.Logger, ruleFolder string) {
 
 	config = rulego.NewConfig(types.WithDefaultPool())
+	//初始化RuleGo日志
+	config.Logger = logger
 	//调试模式回调信息
 	//debugMode=true 的节点才会记录调试日志
 	config.OnDebug = func(chainId, flowType string, nodeId string, msg types.RuleMsg, relationType string, err error) {
