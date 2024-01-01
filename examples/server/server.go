@@ -153,7 +153,7 @@ func initLogger() *log.Logger {
 	if logfile == "" {
 		return log.New(os.Stdout, "", log.LstdFlags)
 	} else {
-		f, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY, 0600)
+		f, err := os.OpenFile(logfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
