@@ -31,21 +31,32 @@ func TestGroupFilterNode(t *testing.T) {
 
 	t.Run("NewNode", func(t *testing.T) {
 		test.NodeNew(t, targetNodeType, &GroupActionNode{}, types.Configuration{
-			"allMatches": true,
+			"matchRelationType": types.Success,
 		}, Registry)
 	})
 
-	t.Run("InitNode", func(t *testing.T) {
+	t.Run("InitNode1", func(t *testing.T) {
 		test.NodeInit(t, targetNodeType, types.Configuration{
-			"allMatches": false,
+			"matchRelationType": types.Success,
+			"nodeIds":           "s1,s2",
 		}, types.Configuration{
-			"allMatches": false,
+			"matchRelationType": types.Success,
+			"matchNum":          2,
+		}, Registry)
+	})
+	t.Run("InitNode2", func(t *testing.T) {
+		test.NodeInit(t, targetNodeType, types.Configuration{
+			"matchNum": 5,
+			"nodeIds":  "s1,s2",
+		}, types.Configuration{
+			"matchRelationType": types.Success,
+			"matchNum":          2,
 		}, Registry)
 	})
 
 	t.Run("DefaultConfig", func(t *testing.T) {
 		test.NodeInit(t, targetNodeType, types.Configuration{}, types.Configuration{
-			"allMatches": true,
+			"matchRelationType": types.Success,
 		}, Registry)
 	})
 
@@ -70,23 +81,23 @@ func TestGroupFilterNode(t *testing.T) {
 		})
 
 		groupFilterNode1, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": false,
-			"nodeIds":    "node1,node2,node3,noFoundId",
-			"timeout":    10,
+			"matchNum": 2,
+			"nodeIds":  "node1,node2,node3,noFoundId",
+			"timeout":  10,
 		}, Registry)
 
 		assert.Nil(t, err)
 
 		groupFilterNode2, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": true,
-			"nodeIds":    "node1,node2",
+			"matchNum": 2,
+			"nodeIds":  "node1,node2",
 		}, Registry)
 
 		assert.Nil(t, err)
 
 		groupFilterNode3, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": false,
-			"nodeIds":    "node1,node2,node3,noFoundId",
+			"matchNum": 1,
+			"nodeIds":  "node1,node2,node3,noFoundId",
 		}, Registry)
 
 		groupFilterNode4, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
@@ -94,18 +105,17 @@ func TestGroupFilterNode(t *testing.T) {
 		}, Registry)
 
 		groupFilterNode5, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": true,
-			"nodeIds":    "node1,node2,node3,noFoundId",
+			"matchNum": 4,
+			"nodeIds":  "node1,node2,node3,noFoundId",
 		}, Registry)
 
 		groupFilterNode6, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": true,
-			"nodeIds":    "",
+			"nodeIds": "",
 		}, Registry)
 
 		groupFilterNode7, err := test.CreateAndInitNode(targetNodeType, types.Configuration{
-			"allMatches": false,
-			"nodeIds":    "node3,node4",
+			"matchNum": 1,
+			"nodeIds":  "node3,node4",
 		}, Registry)
 
 		node1, err := test.CreateAndInitNode("functions", types.Configuration{

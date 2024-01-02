@@ -33,8 +33,13 @@ func init() {
 
 // GroupActionNodeConfiguration 节点配置
 type GroupActionNodeConfiguration struct {
-	//AllMatches 是否要求所有节点都Success才发送到Success链，如果为false，则只要有任何一个节点Success就发送到Success链。默认：true
-	AllMatches bool
+	//MatchRelationType 匹配组内节点关系类型，支持`Success`、`Failure`、`True`、`False`和自定义等关系,默认`Success`
+	MatchRelationType string
+	//MatchNum 匹配满足节点数量
+	//默认0：代表组内所有节点都是 MatchRelationType 指定类型，发送到`Success`链，否则发送到`Failure`链。
+	//MatchNum>0，则表示任意匹配 MatchNum 个节点是 MatchRelationType 指定类型，发送到`Success`链，否则发送到`Failure`链。
+	//MatchNum>=len(NodeIds)则等价于MatchNum=0
+	MatchNum int
 	//NodeIds 组内节点ID列表，多个ID与`,`隔开
 	NodeIds string
 	//Timeout 执行超时，单位秒，默认0：代表不限制。
@@ -42,15 +47,15 @@ type GroupActionNodeConfiguration struct {
 }
 
 // GroupActionNode 把多个节点组成一个分组,异步执行所有节点，等待所有节点执行完成后，把所有节点结果合并，发送到下一个节点
-// 如果所有节点都是Success，则把数据到`Success`链, 否则发到`Failure`链。
-// AllMatches=false，则只要有任何一个节点返回`Success`，则中断未执行完节点，并把结果发送到`Success`链
+// 如果匹配到 Config.MatchNum 个节点是 Config.MatchRelationType 类型，则把数据到`Success`链, 否则发到`Failure`链。
 // nodeIds为空或者执行超时，发送到`Failure`链
 type GroupActionNode struct {
 	//节点配置
 	Config GroupActionNodeConfiguration
 	//节点ID列表
 	NodeIdList []string
-	Length     int32
+	//节点列表长度
+	Length int32
 }
 
 // Type 组件类型
@@ -59,7 +64,7 @@ func (x *GroupActionNode) Type() string {
 }
 
 func (x *GroupActionNode) New() types.Node {
-	return &GroupActionNode{Config: GroupActionNodeConfiguration{AllMatches: true}}
+	return &GroupActionNode{Config: GroupActionNodeConfiguration{MatchRelationType: types.Success}}
 }
 
 // Init 初始化
@@ -71,6 +76,9 @@ func (x *GroupActionNode) Init(ruleConfig types.Config, configuration types.Conf
 			x.NodeIdList = append(x.NodeIdList, v)
 		}
 	}
+	if x.Config.MatchNum <= 0 || x.Config.MatchNum > len(x.NodeIdList) {
+		x.Config.MatchNum = len(x.NodeIdList)
+	}
 	x.Length = int32(len(x.NodeIdList))
 	return err
 }
@@ -81,7 +89,11 @@ func (x *GroupActionNode) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		ctx.TellFailure(msg, errors.New("nodeIds is empty"))
 		return
 	}
+	//完成执行节点数量
 	var endCount int32
+	//匹配节点数量
+	var currentMatchedCount int32
+	//是否已经完成
 	var completed int32
 	c := make(chan bool, 1)
 	var chanCtx context.Context
@@ -123,28 +135,22 @@ func (x *GroupActionNode) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 				firstRelationType := relationType
 				atomic.AddInt32(&endCount, 1)
 
-				if x.Config.AllMatches {
-					if firstRelationType != types.Success {
-						atomic.StoreInt32(&completed, 1)
-						wrapperMsg.Data = str.ToString(filterEmpty(msgs))
-						c <- false
-					} else if atomic.LoadInt32(&endCount) >= x.Length {
-						atomic.StoreInt32(&completed, 1)
+				if x.Config.MatchRelationType == firstRelationType {
+					atomic.AddInt32(&currentMatchedCount, 1)
+				}
+
+				if atomic.LoadInt32(&currentMatchedCount) >= int32(x.Config.MatchNum) {
+					if atomic.CompareAndSwapInt32(&completed, 0, 1) {
 						wrapperMsg.Data = str.ToString(filterEmpty(msgs))
 						c <- true
 					}
-
-				} else if !x.Config.AllMatches {
-					if firstRelationType == types.Success {
-						atomic.StoreInt32(&completed, 1)
-						wrapperMsg.Data = str.ToString(filterEmpty(msgs))
-						c <- true
-					} else if atomic.LoadInt32(&endCount) >= x.Length {
-						atomic.StoreInt32(&completed, 1)
+				} else if atomic.LoadInt32(&endCount) >= x.Length {
+					if atomic.CompareAndSwapInt32(&completed, 0, 1) {
 						wrapperMsg.Data = str.ToString(filterEmpty(msgs))
 						c <- false
 					}
 				}
+
 			}
 
 		})
