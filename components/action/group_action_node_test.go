@@ -37,7 +37,7 @@ func TestGroupFilterNode(t *testing.T) {
 
 	t.Run("InitNode1", func(t *testing.T) {
 		test.NodeInit(t, targetNodeType, types.Configuration{
-			"matchRelationType": types.Success,
+			"matchRelationType": "",
 			"nodeIds":           "s1,s2",
 		}, types.Configuration{
 			"matchRelationType": types.Success,

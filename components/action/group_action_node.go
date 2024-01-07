@@ -64,7 +64,7 @@ func (x *GroupActionNode) Type() string {
 }
 
 func (x *GroupActionNode) New() types.Node {
-	return &GroupActionNode{Config: GroupActionNodeConfiguration{MatchRelationType: types.Success}}
+	return &GroupActionNode{Config: GroupActionNodeConfiguration{MatchRelationType: types.Success, MatchNum: 0}}
 }
 
 // Init 初始化
@@ -72,9 +72,14 @@ func (x *GroupActionNode) Init(ruleConfig types.Config, configuration types.Conf
 	err := maps.Map2Struct(configuration, &x.Config)
 	nodeIds := strings.Split(x.Config.NodeIds, ",")
 	for _, nodeId := range nodeIds {
-		if v := strings.Trim(nodeId, ""); v != "" {
+		if v := strings.TrimSpace(nodeId); v != "" {
 			x.NodeIdList = append(x.NodeIdList, v)
 		}
+	}
+	x.Config.MatchRelationType = strings.TrimSpace(x.Config.MatchRelationType)
+
+	if x.Config.MatchRelationType == "" {
+		x.Config.MatchRelationType = types.Success
 	}
 	if x.Config.MatchNum <= 0 || x.Config.MatchNum > len(x.NodeIdList) {
 		x.Config.MatchNum = len(x.NodeIdList)
